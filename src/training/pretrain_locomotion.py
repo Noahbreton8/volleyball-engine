@@ -95,22 +95,30 @@ class LocoEnv:
         for i in range(TOTAL_PLAYERS):
             z = self._torso_z(i)
             adr_v = self.qvel_adr[i]
-            # Angular velocity of torso root (indices 3-5 in qvel)
             ang_vel = self.data.qvel[adr_v+3:adr_v+6]
             ang_vel_penalty = -0.005 * float(np.dot(ang_vel, ang_vel))
             rewards[i] = locomotion_step_reward(z, self._prev_z[i], 0.0) + ang_vel_penalty
-            self._prev_z[i] = z
+            # Individually respawn fallen players so episodes stay rich with standing attempts.
+            # Without respawn: all-fallen → short episodes → sparse upright signal → collapse.
+            if z < 0.8:
+                self._respawn_player(i)
+            self._prev_z[i] = self._torso_z(i)  # refresh after possible respawn
 
-        # Only terminate at time limit or extreme jumping — do NOT terminate on fall.
-        # Agents lying on the ground (z<0.7) get FALL_PENALTY=-5.0 every step,
-        # creating a massive advantage signal at the fall transition (~500 nats stronger
-        # than the lying state). This gives PPO a strong gradient to prevent falls.
-        all_fallen = all(self._torso_z(i) < 0.8 for i in range(TOTAL_PLAYERS))
-        done = self._step >= self.max_steps or all_fallen or any(
-            self._torso_z(i) > 2.0
-            for i in range(TOTAL_PLAYERS)
+        done = self._step >= self.max_steps or any(
+            self._torso_z(i) > 2.0 for i in range(TOTAL_PLAYERS)
         )
         return self._get_obs(), rewards, done
+
+    def _respawn_player(self, i: int):
+        """Teleport a fallen player back to their start position upright."""
+        all_pos = list(TEAM_A_START_POSITIONS) + list(TEAM_B_START_POSITIONS)
+        x, y = all_pos[i]
+        adr_q = self.qpos_adr[i]
+        adr_v = self.qvel_adr[i]
+        self.data.qpos[adr_q:adr_q+3] = [x, y, START_HEIGHT]
+        self.data.qpos[adr_q+3:adr_q+7] = [1.0, 0.0, 0.0, 0.0]
+        self.data.qpos[adr_q+7:adr_q+PLAYER_QPOS_DIM] = 0.0
+        self.data.qvel[adr_v:adr_v+PLAYER_QVEL_DIM] = 0.0
 
     def _torso_z(self, i: int) -> float:
         return float(self.data.qpos[self.qpos_adr[i] + 2])
@@ -143,16 +151,16 @@ class LocoEnv:
 
 
 def pretrain(steps: int = 300_000, save_path: str = "checkpoints/locomotion_pretrain.pt",
-             log_dir: str = "runs/locomotion"):
+             log_dir: str = "runs/locomotion", entropy_coeff: float = 0.05):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"[pretrain] Locomotion pre-training for {steps} steps on {device}")
+    print(f"[pretrain] Locomotion pre-training for {steps} steps on {device}, entropy={entropy_coeff}")
 
     from ..env.volleyball_env import VolleyballEnv
     tmp = VolleyballEnv(render_mode="none")
     roles = tmp.roles
     tmp.close()
 
-    trainer = MAPPOTrainer(roles=roles, device=device, ppo_epochs=5)
+    trainer = MAPPOTrainer(roles=roles, device=device, ppo_epochs=5, entropy_coeff=entropy_coeff)
     writer = SummaryWriter(log_dir=log_dir)
     Path("checkpoints").mkdir(exist_ok=True)
 
@@ -220,11 +228,12 @@ def pretrain(steps: int = 300_000, save_path: str = "checkpoints/locomotion_pret
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--steps",    type=int, default=300_000)
-    parser.add_argument("--save",     type=str, default="checkpoints/locomotion_pretrain.pt")
-    parser.add_argument("--log-dir",  type=str, default="runs/locomotion")
+    parser.add_argument("--steps",         type=int,   default=300_000)
+    parser.add_argument("--save",          type=str,   default="checkpoints/locomotion_pretrain.pt")
+    parser.add_argument("--log-dir",       type=str,   default="runs/locomotion")
+    parser.add_argument("--entropy-coeff", type=float, default=0.05)
     args = parser.parse_args()
-    pretrain(args.steps, args.save, args.log_dir)
+    pretrain(args.steps, args.save, args.log_dir, args.entropy_coeff)
 
 
 if __name__ == "__main__":
