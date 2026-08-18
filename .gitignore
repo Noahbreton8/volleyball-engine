@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+
+# Training artifacts
+checkpoints/
+logs/
+runs/
+recordings/*.npz
+recordings/*.mp4
+training.pid
+MUJOCO_LOG.TXT
+
+# Claude / memory
+.claude/
+memory/
+
+# Large data
+models/
