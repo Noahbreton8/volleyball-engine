@@ -1,0 +1,12 @@
+{
+  "phase": "volleyball_iter30",
+  "iteration": 35,
+  "volleyball_episodes_done": 12,
+  "volleyball_episodes_target": 500000,
+  "best_rally_frames": 284,
+  "pid": 1581032,
+  "started": 1755577662.0,
+  "speed_eps": 1.6,
+  "last_improvement": "iter30 started. iter29 killed at ep42097 — W avgs declining 61→52→50→49→38fr, peaks 206→229→85→161→63fr. Best iter29 result: 229fr(ep14003). 284fr still all-time record (iter27).",
+  "notes": "iter30: resume=checkpoints/iter20/checkpoint_002000.pt, frozen_update_interval=200 (iter27 progressive curriculum), entropy_coeff=0.02 (2x iter27's 0.01). Iter27 with 0.01 hit 284fr at ep1009. Iter29 with 10k freeze/0.05 entropy hit 229fr. Back to proven curriculum, mild entropy boost to prevent ep1009-style plateau."
+}
