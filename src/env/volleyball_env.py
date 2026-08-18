@@ -154,10 +154,10 @@ class VolleyballEnv(gym.Env):
         Apply actions for all agents, advance physics, compute rewards.
         actions: {agent_id: np.ndarray of shape (PLAYER_ACT_DIM,)}
         """
-        # Apply actions
+        # Apply actions: policy outputs [-1,1], motors accept [-.4,.4]
         for i, action in actions.items():
             adr = self.player_act_adr[i]
-            self.data.ctrl[adr : adr + PLAYER_ACT_DIM] = np.clip(action, -1, 1)
+            self.data.ctrl[adr : adr + PLAYER_ACT_DIM] = np.clip(action, -1, 1) * 0.4
 
         # Physics substeps + Magnus force + elastic collision override
         contact_player = -1

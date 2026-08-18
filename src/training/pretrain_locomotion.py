@@ -85,7 +85,7 @@ class LocoEnv:
     def step(self, actions: dict):
         for i, act in actions.items():
             adr = self.act_adr[i]
-            self.data.ctrl[adr:adr+PLAYER_ACT_DIM] = np.clip(act, -1, 1)
+            self.data.ctrl[adr:adr+PLAYER_ACT_DIM] = np.clip(act, -1, 1) * 0.4
 
         for _ in range(PHYSICS_STEPS_PER_CONTROL):
             mujoco.mj_step(self.model, self.data)
@@ -105,7 +105,8 @@ class LocoEnv:
         # Agents lying on the ground (z<0.7) get FALL_PENALTY=-5.0 every step,
         # creating a massive advantage signal at the fall transition (~500 nats stronger
         # than the lying state). This gives PPO a strong gradient to prevent falls.
-        done = self._step >= self.max_steps or any(
+        all_fallen = all(self._torso_z(i) < 0.8 for i in range(TOTAL_PLAYERS))
+        done = self._step >= self.max_steps or all_fallen or any(
             self._torso_z(i) > 2.0
             for i in range(TOTAL_PLAYERS)
         )

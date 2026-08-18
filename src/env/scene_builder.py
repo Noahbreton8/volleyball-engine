@@ -151,7 +151,7 @@ def build_scene_xml() -> str:
   <compiler angle="degree" inertiafromgeom="true" autolimits="true"/>
 
   <option timestep="{SIM_DT:.6f}" gravity="0 0 -9.81"
-          integrator="RK4" iterations="50" solver="Newton" tolerance="1e-10">
+          integrator="RK4" iterations="50" solver="PGS" tolerance="1e-10">
     <flag contact="enable"/>
   </option>
 
