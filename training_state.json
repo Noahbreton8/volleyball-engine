@@ -1,11 +1,10 @@
 {
-  "phase": "locomotion_pretrain_v2",
-  "iteration": 36,
-  "pid": 1628067,
-  "started": 1755618300.0,
-  "notes": "Full migration to standard MuJoCo Humanoid-v4 (17 actuators, degree angles, hip-knee tendons). Running 500k-step locomotion pretrain. PGS solver, action scaling 0.4, fall-termination. Target: agents learn to stand before volleyball training. Speed: 61 steps/s, ETA ~2.3hrs. avg_reward improving: -1.524@ep50 → -1.344@ep100.",
+  "phase": "volleyball_iter31",
+  "iteration": 37,
+  "pid": 1742327,
+  "started": 1755622800.0,
   "best_rally_frames": 284,
-  "humanoid_migration": "complete",
-  "pretrain_target_steps": 500000,
-  "pretrain_save": "checkpoints/locomotion/pretrain_v2.pt"
+  "notes": "iter31: first volleyball run on standard MuJoCo humanoid. resume=checkpoints/locomotion/pretrain_v2.pt (locomotion pretrain: 200k steps, entropy=0.05, respawn mechanic, final reward=-0.052). Hyperparams match proven iter27: entropy_coeff=0.02, frozen_update_interval=200. Speed ~1.2ep/s single env. Watch ep800-1200 — that's where 284fr record came in iter27.",
+  "pretrain_final_reward": -0.052,
+  "pretrain_notes": "Reward peaked +0.128@ep100, declined to -0.052@ep650 (agents standing ~8 steps between falls). Respawn mechanic prevented collapse seen in v1 run (-1.9 range)."
 }
