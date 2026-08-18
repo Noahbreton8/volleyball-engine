@@ -252,14 +252,14 @@ class VolleyballEnv(gym.Env):
                 # Old 2.5m cap: reach=0 at step 0. New 3.5m: 0.3*(1-2.5/3.5)=0.086/step
                 # from step 0 — gradient fires immediately to pull arm toward ball.
                 if hd < 3.5:
-                    rewards[i] += 0.3 * max(0.0, 1.0 - hd / 3.5)
+                    # iter31: reach coeff 0.3→0.8. Standard humanoid arms extend in y;
+                    # gap to ball at drop is ~0.10m vs 0.143m contact threshold — strong
+                    # gradient needed to close this 30ms window before ball passes arm.
+                    rewards[i] += 0.8 * max(0.0, 1.0 - hd / 3.5)
 
-                # 3D anticipation reward: guide upper arm to (pred_x, pred_y, 1.5m).
-                # Contact happens at z≈1.5m (arm contact height). Arm horizontal
-                # = upper arm center at shoulder height ≈1.5m — matches naturally.
-                # Previous iter18 bug: XY-only reward gave no gradient for arm height,
-                # so agents positioned laterally but never raised the arm. Adding Z
-                # unifies XY+Z into single signal. Falloff 0.35m in 3D space.
+                # 3D anticipation reward: guide upper arm to predicted ball landing point.
+                # Standard humanoid: arms extend in ±y (right=-y, left=+y).
+                # use_right = ball landing to the right (lower y) of the agent.
                 if ball_pos[2] > 1.5:
                     dz = ball_pos[2] - 1.5
                     disc = ball_vel[2] ** 2 + 2.0 * 9.81 * dz
@@ -269,25 +269,17 @@ class VolleyballEnv(gym.Env):
                             pred_x = ball_pos[0] + ball_vel[0] * t_to_arm
                             pred_y = ball_pos[1] + ball_vel[1] * t_to_arm
                             agent_xy = self.data.qpos[self.player_qpos_adr[i] : self.player_qpos_adr[i] + 2]
-                            use_right = (pred_x - agent_xy[0]) > 0
+                            # Standard humanoid: right arm is at -y, left at +y
+                            use_right = (pred_y - agent_xy[1]) < 0
                             uarm_id = self.player_ruarm_id[i] if use_right else self.player_luarm_id[i]
-                            uarm_xyz = self.data.xpos[uarm_id]  # full 3D
+                            uarm_xyz = self.data.xpos[uarm_id]
                             pred_xyz = np.array([pred_x, pred_y, 1.5])
                             uarm_dist_3d = float(np.linalg.norm(uarm_xyz - pred_xyz))
-                            # iter27: anticipation coeff 1.0→0.2. Max anticipation
-                            # 0.2*19=3.8pts < contact(1.5)+win(5.0)=6.5pts. Contact
-                            # now dominant. Reach now provides gradient from step 0
-                            # (radius 3.5m), anticipation provides precision gradient
-                            # when arm near pred_xyz (radius 0.35m). Two-stage signal.
                             rewards[i] += 0.2 * max(0.0, 1.0 - uarm_dist_3d / 0.35)
 
-                            # Overshoot penalty: measure UPPER ARM past pred_x, not torso.
-                            # iter20 bug: torso threshold let arm reach pred_x+0.18 before
-                            # triggering, penalty 0.052/step < loco 0.1/step → loco won.
-                            # Fix: penalize when uarm_x > pred_x (arm past ball) with
-                            # coeff 1.0 > loco 0.1, so arm stays AT pred_x not past it.
-                            arm_sign = 1.0 if use_right else -1.0
-                            arm_past_pred = arm_sign * (float(uarm_xyz[0]) - pred_x)
+                            # Overshoot penalty in y (arm direction for standard humanoid)
+                            arm_sign = -1.0 if use_right else 1.0
+                            arm_past_pred = arm_sign * (float(uarm_xyz[1]) - pred_y)
                             if arm_past_pred > 0.05:
                                 rewards[i] -= 1.0 * min(1.0, arm_past_pred - 0.05)
 
@@ -378,7 +370,7 @@ class VolleyballEnv(gym.Env):
             recv_pids = [1, 2, 3]   # team A front row
 
         target_pid = int(rng.choice(recv_pids))
-        arm_dir = float(rng.choice([-1.0, 1.0]))  # -1=left arm, +1=right arm
+        arm_dir = float(rng.choice([-1.0, 1.0]))  # -1=right arm (-y), +1=left arm (+y)
 
         # Query player root position after settle
         adr_q = self.player_qpos_adr[target_pid]
@@ -387,8 +379,10 @@ class VolleyballEnv(gym.Env):
 
         x_noise = float(rng.uniform(-0.02, 0.02))
         y_noise = float(rng.uniform(-0.02, 0.02))
-        target_x = player_x + arm_dir * 0.27 + x_noise
-        target_y = player_y + y_noise
+        # Standard MuJoCo humanoid arms extend in the y-direction (±0.17m), not x.
+        # Ball offset must match arm direction so the falling ball passes through arm radius.
+        target_x = player_x + x_noise
+        target_y = player_y + arm_dir * 0.27 + y_noise
 
         self.data.qpos[adr : adr + 3] = [target_x, target_y, 3.5]
         self.data.qvel[self.ball_qvel_adr : self.ball_qvel_adr + 3] = [0.0, 0.0, 0.0]
