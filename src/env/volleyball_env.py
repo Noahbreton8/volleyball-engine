@@ -97,32 +97,22 @@ class VolleyballEnv(gym.Env):
         # Actuator start per player (25 actuators each, sequential)
         self.player_act_adr = [i * PLAYER_ACT_DIM for i in range(TOTAL_PLAYERS)]
 
-        # Touch sensor ids
-        self.touch_sensor_ids = {}
-        for i in range(TOTAL_PLAYERS):
-            for side in ("l", "r"):
-                name = f"touch_p{i}_{side}"
-                sid = mujoco.mj_name2id(
-                    self.model, mujoco.mjtObj.mjOBJ_SENSOR, name
-                )
-                self.touch_sensor_ids[(i, side)] = sid
-
         # Hand site ids for reach reward (site_xpos updated by mj_step)
         self.player_lhand_site_id = [
-            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, f"p{i}_l_hand_site")
+            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, f"p{i}_left_hand_site")
             for i in range(TOTAL_PLAYERS)
         ]
         self.player_rhand_site_id = [
-            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, f"p{i}_r_hand_site")
+            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, f"p{i}_right_hand_site")
             for i in range(TOTAL_PLAYERS)
         ]
-        # Upper arm body ids — contact happens here, not at hand site
+        # Upper arm body ids for anticipation reward
         self.player_luarm_id = [
-            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"p{i}_l_uarm")
+            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"p{i}_left_upper_arm")
             for i in range(TOTAL_PLAYERS)
         ]
         self.player_ruarm_id = [
-            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"p{i}_r_uarm")
+            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"p{i}_right_upper_arm")
             for i in range(TOTAL_PLAYERS)
         ]
 

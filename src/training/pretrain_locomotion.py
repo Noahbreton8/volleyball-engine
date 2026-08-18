@@ -33,11 +33,11 @@ ALIVE_BONUS = 0.05     # small per-step bonus just for existing
 
 def locomotion_step_reward(torso_z: float, torso_z_prev: float, vel_z: float) -> float:
     """Dense reward for staying upright at standing height. Penalizes jumping AND falling."""
-    if torso_z < 0.7:
+    if torso_z < 0.8:
         return FALL_PENALTY           # -5.0: fell over
-    if torso_z > START_HEIGHT + 0.4:  # jumped above 1.71m
+    if torso_z > START_HEIGHT + 0.5:  # jumped above ~1.85m
         return -3.0                   # strong penalty to prevent the jump exploit
-    # Gaussian around ideal standing height (1.31m = feet just on ground)
+    # Gaussian around ideal standing height after settling (~1.25-1.35m)
     deviation = abs(torso_z - START_HEIGHT)
     upright = max(0.0, 1.0 - deviation / 0.4)
     return ALIVE_BONUS + UPRIGHT_REWARD * upright
@@ -106,7 +106,7 @@ class LocoEnv:
         # creating a massive advantage signal at the fall transition (~500 nats stronger
         # than the lying state). This gives PPO a strong gradient to prevent falls.
         done = self._step >= self.max_steps or any(
-            self._torso_z(i) > 2.5
+            self._torso_z(i) > 2.0
             for i in range(TOTAL_PLAYERS)
         )
         return self._get_obs(), rewards, done

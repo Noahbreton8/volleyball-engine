@@ -151,14 +151,14 @@ def block_reward(
 
 
 def upright_reward(agent_pos: np.ndarray) -> float:
-    """Keep agents grounded at standing height (~1.31m). Penalizes falling AND jumping."""
+    """Keep agents grounded at standing height (~1.29m). Penalizes falling AND jumping."""
     z = agent_pos[2]
-    if z < 0.7:
+    if z < 0.8:
         return -1.0   # hard falling penalty
     if z > 2.0:
         return -0.5   # jumping/flying penalty
-    # Gaussian around ideal standing height 1.31m (freejoint root with feet on ground)
-    deviation = abs(z - 1.31)
+    # Gaussian around ideal standing height ~1.29m (standard humanoid torso after settle)
+    deviation = abs(z - 1.29)
     return 0.1 * max(0.0, 1.0 - deviation / 0.6)
 
 
